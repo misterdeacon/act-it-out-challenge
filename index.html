@@ -614,9 +614,12 @@
     <div class="play-card" id="playCard">
       <div class="play-num" id="playNum">1</div>
       <div class="play-text" id="playText"></div>
+      <button class="pill-btn primary" id="playStartBtn" hidden>🎵 开始</button>
     </div>
     <div class="play-hint">点击画面任意处，进入下一题</div>
   </div>
+
+  <audio id="levelMusic" src="level%20music.mp3" preload="auto"></audio>
 
   <script>
     (function () {
@@ -692,9 +695,11 @@
       var playCard = document.getElementById("playCard");
       var playNum = document.getElementById("playNum");
       var playText = document.getElementById("playText");
+      var playStartBtn = document.getElementById("playStartBtn");
       var closePlayBtn = document.getElementById("closePlayBtn");
+      var levelMusic = document.getElementById("levelMusic");
 
-      var playIndex = 0;
+      var playIndex = -1;
 
       var settingsBtn = document.getElementById("settingsBtn");
       var settingsOverlay = document.getElementById("settingsOverlay");
@@ -786,14 +791,20 @@
         }
       }
 
+      var summaryShown = false;
+
       function updateProgress() {
         var count = revealed.filter(Boolean).length;
         progressEl.textContent = "已翻开 " + count + " / " + TILE_COUNT;
-        endBtn.disabled = count < TILE_COUNT;
+        if (count === TILE_COUNT && !summaryShown) {
+          summaryShown = true;
+          showEndSummary();
+        }
       }
 
       function resetBoard() {
         revealed = new Array(TILE_COUNT).fill(false);
+        summaryShown = false;
         buildBoard();
         updateProgress();
       }
@@ -805,21 +816,44 @@
       /* ---------- Play mode ---------- */
 
       function renderPlaySlide() {
-        playNum.textContent = playIndex + 1;
-        playText.textContent = currentAnswer(playIndex);
+        if (playIndex === -1) {
+          playNum.textContent = "🎬";
+          playText.textContent = "准备好了吗？";
+          playStartBtn.hidden = false;
+        } else {
+          playNum.textContent = playIndex + 1;
+          playText.textContent = currentAnswer(playIndex);
+          playStartBtn.hidden = true;
+        }
+      }
+
+      function startMusic() {
+        try {
+          levelMusic.currentTime = 0;
+          levelMusic.play();
+        } catch (e) { /* autoplay blocked or file missing, ignore */ }
+      }
+
+      function stopMusic() {
+        try {
+          levelMusic.pause();
+          levelMusic.currentTime = 0;
+        } catch (e) { /* ignore */ }
       }
 
       function openPlayMode() {
-        playIndex = 0;
+        playIndex = -1;
         renderPlaySlide();
         playOverlay.hidden = false;
       }
 
       function closePlayMode() {
+        stopMusic();
         playOverlay.hidden = true;
       }
 
       function advancePlaySlide() {
+        if (playIndex === -1) return;
         if (playIndex >= TILE_COUNT - 1) {
           closePlayMode();
           return;
@@ -830,6 +864,12 @@
 
       playModeBtn.addEventListener("click", openPlayMode);
       playCard.addEventListener("click", advancePlaySlide);
+      playStartBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        startMusic();
+        playIndex = 0;
+        renderPlaySlide();
+      });
       closePlayBtn.addEventListener("click", function (e) {
         e.stopPropagation();
         closePlayMode();
@@ -874,11 +914,11 @@
         return pairLines.concat(trapLines);
       }
 
-      endBtn.addEventListener("click", function () {
+      function showEndSummary() {
         var lines = buildPairSummary().map(escapeHtml);
         endSummary.innerHTML = "本局套题 " + (activeSetIndex + 1) + " 的配对结果：<br>" + lines.join("<br>");
         endOverlay.hidden = false;
-      });
+      }
       closeEndBtn.addEventListener("click", function () { endOverlay.hidden = true; });
       playAgainBtn.addEventListener("click", function () {
         endOverlay.hidden = true;
