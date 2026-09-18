@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>神秘题目板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --cream: #F6F1E5;
+      --ink: #2A2620;
+      --mustard: #E3A23E;
+      --mustard-deep: #C97F22;
+      --teal: #3F8F8A;
+      --teal-deep: #2B6C68;
+      --card-face: #FFFDF8;
+      --pin-red: #B5522F;
+      --shadow: rgba(42, 38, 32, 0.35);
+      --ring: #2A2620;
+    }
+
+    :root:not([data-theme="light"]) {
+      /* fallback dark tokens, only applied under prefers-color-scheme below */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --cream: #1E1C18;
+        --ink: #F3EEE3;
+        --card-face: #2A2722;
+        --shadow: rgba(0, 0, 0, 0.55);
+        --ring: #F3EEE3;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --cream: #1E1C18;
+      --ink: #F3EEE3;
+      --card-face: #2A2722;
+      --shadow: rgba(0, 0, 0, 0.55);
+      --ring: #F3EEE3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+      overflow-x: hidden;
+    }
+
+    .topbar {
+      width: 100%;
+      max-width: 920px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-family: 'Baloo 2', 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: clamp(28px, 5vw, 42px);
+      margin: 0;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      opacity: 0.72;
+      margin: 6px 0 28px;
+      max-width: 560px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .icon-btn {
+      background: var(--card-face);
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      width: 46px;
+      height: 46px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 3px 3px 0 var(--shadow);
+      transition: transform .15s ease;
+    }
+
+    .icon-btn:hover {
+      transform: translate(-1px, -1px);
+    }
+
+    .icon-btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 var(--shadow);
+    }
+
+    .icon-btn:focus-visible,
+    .tile:focus-visible,
+    .pill-btn:focus-visible,
+    .tab:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 3px solid var(--teal-deep);
+      outline-offset: 2px;
+    }
+
+    .setlabel {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      background: var(--card-face);
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      padding: 8px 16px;
+      box-shadow: 3px 3px 0 var(--shadow);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      width: 100%;
+      max-width: 920px;
+      margin-top: 10px;
+    }
+
+    .tile {
+      aspect-ratio: 1.3/1;
+      perspective: 1200px;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      padding: 0;
+      font: inherit;
+      color: inherit;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .tile-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform .65s cubic-bezier(.34, 1.56, .64, 1);
+      transform-style: preserve-3d;
+    }
+
+    .tile.flipped .tile-inner {
+      transform: rotateY(180deg);
+    }
+
+    .tile.pulse .tile-inner {
+      animation: pulse .5s ease;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1) rotateY(0);
+      }
+
+      40% {
+        transform: scale(1.06) rotateY(0);
+      }
+
+      100% {
+        transform: scale(1) rotateY(0);
+      }
+    }
+
+    .face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tile-front {
+      background: var(--tile-color);
+      box-shadow: 6px 7px 0 var(--shadow);
+      transform: rotate(var(--tilt));
+    }
+
+    .tile-back {
+      background: var(--card-face);
+      border: 3px solid var(--tile-color);
+      box-shadow: 6px 7px 0 var(--shadow);
+      transform: rotateY(180deg) rotate(var(--tilt));
+      padding: 14px;
+      text-align: center;
+    }
+
+    .pin {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%) rotate(var(--tilt));
+      width: 14px;
+      height: 28px;
+      z-index: 2;
+    }
+
+    .pin::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      left: 4px;
+      width: 6px;
+      height: 16px;
+      background: var(--pin-red);
+      border-radius: 2px;
+    }
+
+    .pin::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 14px;
+      height: 14px;
+      background: var(--pin-red);
+      border-radius: 50%;
+      box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.15);
+    }
+
+    .bubble {
+      position: relative;
+      width: 62%;
+      height: 78%;
+      border-radius: 50%;
+      border: 4px solid var(--ring);
+      background: var(--bubble-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: rotate(calc(var(--tilt) * -1.4));
+    }
+
+    .num {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 800;
+      font-size: clamp(30px, 5vw, 46px);
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .answer-text {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 700;
+      font-size: clamp(26px, 6vw, 42px);
+      line-height: 1.25;
+      word-break: break-word;
+    }
+
+    .answer-idx {
+      position: absolute;
+      top: 8px;
+      left: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0.4;
+    }
+
+    .controls {
+      margin-top: 36px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .pill-btn {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      padding: 13px 28px;
+      border-radius: 999px;
+      border: 2.5px solid var(--ink);
+      background: var(--card-face);
+      color: var(--ink);
+      cursor: pointer;
+      box-shadow: 4px 4px 0 var(--shadow);
+      transition: transform .15s ease, opacity .15s ease;
+    }
+
+    .pill-btn:hover:not(:disabled) {
+      transform: translate(-1px, -1px);
+    }
+
+    .pill-btn:active:not(:disabled) {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 var(--shadow);
+    }
+
+    .pill-btn.primary {
+      background: var(--teal);
+      color: #fff;
+      border-color: var(--teal-deep);
+    }
+
+    .pill-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .progress {
+      margin-top: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      opacity: 0.65;
+      font-family: 'Baloo 2', sans-serif;
+    }
+
+    /* ---------- Modal (settings) ---------- */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 50;
+    }
+
+    .overlay[hidden] {
+      display: none;
+    }
+
+    .modal {
+      background: var(--cream);
+      border-radius: 20px;
+      border: 3px solid var(--ink);
+      width: 100%;
+      max-width: 640px;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 8px 8px 0 var(--shadow);
+    }
+
+    .modal h2 {
+      font-family: 'Baloo 2', sans-serif;
+      margin: 0 0 4px;
+      font-size: 24px;
+    }
+
+    .modal p.hint {
+      font-size: 13px;
+      opacity: 0.65;
+      margin: 0 0 18px;
+      line-height: 1.5;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .tab {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 800;
+      font-size: 17px;
+      padding: 16px 10px;
+      border-radius: 14px;
+      border: 2.5px solid var(--ink);
+      background: var(--card-face);
+      cursor: pointer;
+      box-shadow: 3px 3px 0 var(--shadow);
+    }
+
+    .tab.active {
+      background: var(--mustard);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .field-grid textarea {
+      font-family: 'Nunito', sans-serif;
+      font-size: 17px;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      padding: 8px;
+      resize: none;
+      height: 76px;
+      background: var(--card-face);
+      color: var(--ink);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .close-x {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+    }
+
+    .modal-head {
+      position: relative;
+    }
+
+    /* ---------- End game overlay ---------- */
+    .celebrate {
+      text-align: center;
+      max-width: 420px;
+    }
+
+    .celebrate .big {
+      font-family: 'Baloo 2', sans-serif;
+      font-size: 30px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .celebrate p {
+      font-size: 14px;
+      opacity: 0.75;
+      line-height: 1.5;
+    }
+
+    #endSummary {
+      text-align: left;
+      font-size: 16px;
+      font-weight: 700;
+      opacity: 1;
+    }
+
+    /* ---------- Play mode ---------- */
+    .play-overlay {
+      position: fixed;
+      inset: 0;
+      background: #14120F;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      z-index: 60;
+      cursor: pointer;
+    }
+
+    .play-overlay[hidden] {
+      display: none;
+    }
+
+    .play-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 2;
+    }
+
+    .play-card {
+      width: min(88vw, 1280px);
+      aspect-ratio: 16/9;
+      background: var(--card-face);
+      border: 4px solid var(--ink);
+      border-radius: 24px;
+      box-shadow: 10px 10px 0 var(--shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 4vh, 40px);
+      padding: 5vh 6vw;
+      position: relative;
+    }
+
+    .play-num {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 800;
+      font-size: clamp(20px, 3vw, 30px);
+      color: #fff;
+      background: var(--teal-deep);
+      border-radius: 999px;
+      padding: 6px 22px;
+    }
+
+    .play-text {
+      font-family: 'Baloo 2', sans-serif;
+      font-weight: 800;
+      font-size: clamp(32px, 7vw, 88px);
+      line-height: 1.25;
+      text-align: center;
+      color: var(--ink);
+      word-break: break-word;
+    }
+
+    .play-hint {
+      color: #F3EEE3;
+      opacity: 0.6;
+      font-size: 14px;
+    }
+
+    @media (max-width:600px) {
+      .board {
+        gap: 12px;
+      }
+
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .tile-inner {
+        transition: none;
+      }
+
+      .tile.pulse .tile-inner {
+        animation: none;
+      }
+
+      .icon-btn,
+      .pill-btn {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <button class="icon-btn" id="settingsBtn" title="选择题目" aria-label="选择题目">✏️</button>
+    <button class="pill-btn" id="playModeBtn">▶ 播放模式</button>
+    <button class="setlabel" id="setSelectBtn">当前套题：套题 1</button>
+  </div>
+
+  <h1>神秘题目板</h1>
+  <p class="subtitle">按 1–9 的顺序随意点开号码牌，翻开就能看到题目。全部翻开后即可结束游戏。</p>
+
+  <div class="board" id="board" role="group" aria-label="九宫格题目板"></div>
+
+  <div class="progress" id="progress">已翻开 0 / 9</div>
+
+  <div class="controls">
+    <button class="pill-btn" id="resetBtn">🔄 重新开始</button>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="overlay" id="settingsOverlay" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2>选择题目</h2>
+        <button class="icon-btn close-x" id="closeSettings" aria-label="关闭">✕</button>
+      </div>
+      <p class="hint">共 6 套题目，每套 9 题，对应号码牌 1–9。题目内容默认隐藏，点击"编辑题目"后才可查看与修改。</p>
+      <div class="tabs" id="tabs"></div>
+      <div class="field-grid" id="fieldGrid"></div>
+      <div class="modal-actions">
+        <button class="pill-btn" id="revealFieldsBtn">编辑题目</button>
+        <button class="pill-btn" id="saveOnlyBtn">💾 保存</button>
+        <button class="pill-btn primary" id="saveUseBtn">✅ 保存并使用这一套</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- End game overlay -->
+  <div class="overlay" id="endOverlay" hidden>
+    <div class="modal celebrate">
+      <div class="big">🎉 游戏结束！</div>
+      <p id="endSummary"></p>
+      <div class="modal-actions" style="justify-content:center; margin-top:14px;">
+        <button class="pill-btn primary" id="playAgainBtn">再来一局</button>
+        <button class="pill-btn" id="closeEndBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Play mode overlay -->
+  <div class="play-overlay" id="playOverlay" hidden>
+    <button class="icon-btn play-close" id="closePlayBtn" aria-label="关闭播放模式">✕</button>
+    <div class="play-card" id="playCard">
+      <div class="play-num" id="playNum">1</div>
+      <div class="play-text" id="playText"></div>
+    </div>
+    <div class="play-hint">点击画面任意处，进入下一题</div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var STORAGE_KEY = "mysteryBoardSets_v1";
+      var SET_COUNT = 6;
+      var TILE_COUNT = 9;
+
+      var defaultSet1 = ["健美先生", "火箭", "白雪公主", "超人", "食物中毒", "健美先生", "白雪公主", "超人", "食物中毒"];
+      var defaultSet2 = ["招财猫", "小偷", "挖土机", "加油站", "小偷", "招财猫", "圣诞老人", "挖土机", "加油站"];
+
+      var defaultSet3 = ["生小孩", "擦桌子", "便秘", "DJ", "擦桌子", "生小孩", "尿急", "便秘", "DJ"];
+
+      var defaultSet4 = ["中秋节", "溜冰", "陀螺", "圣诞节", "溜冰", "中秋节", "地震", "陀螺", "圣诞节"];
+      var defaultSet5 = ["说一个梦想", "模仿快乐样子", "做一个飞吻", "说三个国家", "学老人走路", "唱生日歌", "讲一个谜语", "表演生气", "比赞五次"];
+      var defaultSet6 = ["说出一道菜", "模仿风声", "做一个招牌动作", "说三种颜色", "学鸭子走", "唱一句童谣", "讲一个优点", "表演睡觉", "挥手打招呼"];
+
+      var defaultSetList = [
+        defaultSet1, defaultSet2, defaultSet3,
+        defaultSet4, defaultSet5, defaultSet6
+      ];
+
+      function makeEmptySet() {
+        var arr = [];
+        for (var i = 0; i < TILE_COUNT; i++) arr.push("");
+        return arr;
+      }
+
+      function defaultSets() {
+        var sets = [];
+        for (var i = 0; i < SET_COUNT; i++) {
+          if (i < defaultSetList.length) sets.push(defaultSetList[i].slice());
+          else sets.push(makeEmptySet());
+        }
+        return sets;
+      }
+
+      var sets = defaultSets();
+      var activeSetIndex = 0;
+      var editingTabIndex = 0;
+
+      function loadFromStorage() {
+        try {
+          var raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return;
+          var parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.sets) && parsed.sets.length === SET_COUNT) {
+            sets = parsed.sets;
+          }
+          if (parsed && typeof parsed.activeSetIndex === "number") {
+            activeSetIndex = parsed.activeSetIndex;
+          }
+        } catch (e) { /* storage unavailable, keep defaults in memory */ }
+      }
+
+      function saveToStorage() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ sets: sets, activeSetIndex: activeSetIndex }));
+        } catch (e) { /* ignore, in-memory only */ }
+      }
+
+      loadFromStorage();
+
+      var revealed = new Array(TILE_COUNT).fill(false);
+
+      var boardEl = document.getElementById("board");
+      var progressEl = document.getElementById("progress");
+      var resetBtn = document.getElementById("resetBtn");
+      var setSelectBtn = document.getElementById("setSelectBtn");
+      var playModeBtn = document.getElementById("playModeBtn");
+      var playOverlay = document.getElementById("playOverlay");
+      var playCard = document.getElementById("playCard");
+      var playNum = document.getElementById("playNum");
+      var playText = document.getElementById("playText");
+      var closePlayBtn = document.getElementById("closePlayBtn");
+
+      var playIndex = 0;
+
+      var settingsBtn = document.getElementById("settingsBtn");
+      var settingsOverlay = document.getElementById("settingsOverlay");
+      var closeSettings = document.getElementById("closeSettings");
+      var tabsEl = document.getElementById("tabs");
+      var fieldGridEl = document.getElementById("fieldGrid");
+      var saveOnlyBtn = document.getElementById("saveOnlyBtn");
+      var saveUseBtn = document.getElementById("saveUseBtn");
+
+      var endOverlay = document.getElementById("endOverlay");
+      var endSummary = document.getElementById("endSummary");
+      var playAgainBtn = document.getElementById("playAgainBtn");
+      var closeEndBtn = document.getElementById("closeEndBtn");
+      var revealFieldsBtn = document.getElementById("revealFieldsBtn");
+
+      var fieldsRevealed = false;
+
+      var tilts = ["-3deg", "2deg", "-2deg", "3deg", "-1deg", "2deg", "-3deg", "1deg", "-2deg"];
+
+      function currentAnswer(i) {
+        var val = sets[activeSetIndex][i];
+        if (val && val.trim().length > 0) return val;
+        return "（题目 " + (i + 1) + " 待填写）";
+      }
+
+      function buildBoard() {
+        boardEl.innerHTML = "";
+        for (var i = 0; i < TILE_COUNT; i++) {
+          (function (idx) {
+            var num = idx + 1;
+            var isOdd = (num % 2) === 1;
+            var tileColor = isOdd ? "var(--mustard)" : "var(--teal)";
+            var bubbleColor = isOdd ? "var(--teal)" : "var(--mustard)";
+
+            var btn = document.createElement("button");
+            btn.className = "tile";
+            btn.setAttribute("aria-pressed", "false");
+            btn.setAttribute("aria-label", "题目 " + num + "，点击翻开");
+            btn.style.setProperty("--tile-color", tileColor);
+            btn.style.setProperty("--bubble-color", bubbleColor);
+            btn.style.setProperty("--tilt", tilts[idx]);
+
+            var inner = document.createElement("div");
+            inner.className = "tile-inner";
+
+            var front = document.createElement("div");
+            front.className = "face tile-front";
+            var pin = document.createElement("div");
+            pin.className = "pin";
+            var bubble = document.createElement("div");
+            bubble.className = "bubble";
+            var numSpan = document.createElement("span");
+            numSpan.className = "num";
+            numSpan.textContent = num;
+            bubble.appendChild(numSpan);
+            front.appendChild(pin);
+            front.appendChild(bubble);
+
+            var back = document.createElement("div");
+            back.className = "face tile-back";
+            var idxTag = document.createElement("span");
+            idxTag.className = "answer-idx";
+            idxTag.textContent = num;
+            var ans = document.createElement("span");
+            ans.className = "answer-text";
+            ans.textContent = "";
+            back.appendChild(idxTag);
+            back.appendChild(ans);
+
+            inner.appendChild(front);
+            inner.appendChild(back);
+            btn.appendChild(inner);
+
+            btn.addEventListener("click", function () {
+              if (revealed[idx]) return;
+              revealed[idx] = true;
+              ans.textContent = currentAnswer(idx);
+              btn.classList.add("flipped");
+              btn.setAttribute("aria-pressed", "true");
+              setTimeout(function () {
+                btn.classList.add("pulse");
+                setTimeout(function () { btn.classList.remove("pulse"); }, 500);
+              }, 650);
+              updateProgress();
+            });
+
+            boardEl.appendChild(btn);
+          })(i);
+        }
+      }
+
+      function updateProgress() {
+        var count = revealed.filter(Boolean).length;
+        progressEl.textContent = "已翻开 " + count + " / " + TILE_COUNT;
+        endBtn.disabled = count < TILE_COUNT;
+      }
+
+      function resetBoard() {
+        revealed = new Array(TILE_COUNT).fill(false);
+        buildBoard();
+        updateProgress();
+      }
+
+      function updateSetLabel() {
+        setSelectBtn.textContent = "当前套题：套题 " + (activeSetIndex + 1);
+      }
+
+      /* ---------- Play mode ---------- */
+
+      function renderPlaySlide() {
+        playNum.textContent = playIndex + 1;
+        playText.textContent = currentAnswer(playIndex);
+      }
+
+      function openPlayMode() {
+        playIndex = 0;
+        renderPlaySlide();
+        playOverlay.hidden = false;
+      }
+
+      function closePlayMode() {
+        playOverlay.hidden = true;
+      }
+
+      function advancePlaySlide() {
+        if (playIndex >= TILE_COUNT - 1) {
+          closePlayMode();
+          return;
+        }
+        playIndex++;
+        renderPlaySlide();
+      }
+
+      playModeBtn.addEventListener("click", openPlayMode);
+      playCard.addEventListener("click", advancePlaySlide);
+      closePlayBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        closePlayMode();
+      });
+      playOverlay.addEventListener("click", function (e) {
+        if (e.target === playOverlay) advancePlaySlide();
+      });
+
+      resetBtn.addEventListener("click", resetBoard);
+
+      setSelectBtn.addEventListener("click", function () {
+        openSettings(activeSetIndex);
+      });
+
+      function escapeHtml(s) {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+
+      function buildPairSummary() {
+        var currentSet = sets[activeSetIndex];
+        var groups = {};
+        var order = [];
+        for (var i = 0; i < TILE_COUNT; i++) {
+          var raw = currentSet[i];
+          var val = (raw && raw.trim()) ? raw.trim() : "（未填写 " + (i + 1) + "）";
+          if (!groups[val]) {
+            groups[val] = [];
+            order.push(val);
+          }
+          groups[val].push(i + 1);
+        }
+        var pairLines = [];
+        var trapLines = [];
+        order.forEach(function (val) {
+          var nums = groups[val];
+          if (nums.length === 1) {
+            trapLines.push("陷阱：" + nums[0] + "  " + val);
+          } else {
+            pairLines.push(nums.join(" & ") + "  " + val);
+          }
+        });
+        return pairLines.concat(trapLines);
+      }
+
+      endBtn.addEventListener("click", function () {
+        var lines = buildPairSummary().map(escapeHtml);
+        endSummary.innerHTML = "本局套题 " + (activeSetIndex + 1) + " 的配对结果：<br>" + lines.join("<br>");
+        endOverlay.hidden = false;
+      });
+      closeEndBtn.addEventListener("click", function () { endOverlay.hidden = true; });
+      playAgainBtn.addEventListener("click", function () {
+        endOverlay.hidden = true;
+        resetBoard();
+      });
+
+      /* ---------- Settings modal ---------- */
+
+      function openSettings(tabIndex) {
+        editingTabIndex = tabIndex;
+        fieldsRevealed = false;
+        renderTabs();
+        renderFields();
+        settingsOverlay.hidden = false;
+      }
+
+      settingsBtn.addEventListener("click", function () { openSettings(activeSetIndex); });
+      closeSettings.addEventListener("click", function () { settingsOverlay.hidden = true; });
+      settingsOverlay.addEventListener("click", function (e) {
+        if (e.target === settingsOverlay) settingsOverlay.hidden = true;
+      });
+
+      function renderTabs() {
+        tabsEl.innerHTML = "";
+        for (var i = 0; i < SET_COUNT; i++) {
+          (function (i) {
+            var t = document.createElement("button");
+            t.className = "tab" + (i === editingTabIndex ? " active" : "");
+            t.textContent = "套题 " + (i + 1);
+            t.addEventListener("click", function () {
+              syncFieldsToMemory();
+              editingTabIndex = i;
+              fieldsRevealed = false;
+              renderTabs();
+              renderFields();
+            });
+            tabsEl.appendChild(t);
+          })(i);
+        }
+      }
+
+      function renderFields() {
+        fieldGridEl.innerHTML = "";
+        for (var i = 0; i < TILE_COUNT; i++) {
+          var ta = document.createElement("textarea");
+          ta.placeholder = "题目 " + (i + 1);
+          ta.dataset.idx = i;
+          if (fieldsRevealed) {
+            ta.value = sets[editingTabIndex][i] || "";
+            ta.disabled = false;
+          } else {
+            ta.value = "***";
+            ta.disabled = true;
+          }
+          fieldGridEl.appendChild(ta);
+        }
+      }
+
+      function syncFieldsToMemory() {
+        var textareas = fieldGridEl.querySelectorAll("textarea");
+        textareas.forEach(function (ta) {
+          if (ta.disabled) return;
+          var idx = parseInt(ta.dataset.idx, 10);
+          sets[editingTabIndex][idx] = ta.value;
+        });
+      }
+
+      revealFieldsBtn.addEventListener("click", function () {
+        fieldsRevealed = true;
+        renderFields();
+      });
+
+      saveOnlyBtn.addEventListener("click", function () {
+        syncFieldsToMemory();
+        saveToStorage();
+        saveOnlyBtn.textContent = "✔ 已保存";
+        setTimeout(function () { saveOnlyBtn.textContent = "💾 保存"; }, 1200);
+      });
+
+      saveUseBtn.addEventListener("click", function () {
+        syncFieldsToMemory();
+        activeSetIndex = editingTabIndex;
+        saveToStorage();
+        updateSetLabel();
+        settingsOverlay.hidden = true;
+        resetBoard();
+      });
+
+      /* ---------- init ---------- */
+      updateSetLabel();
+      buildBoard();
+      updateProgress();
+    })();
+  </script>
+</body>
+
+</html>
